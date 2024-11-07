@@ -354,31 +354,34 @@ def fit(
                 lengths=(state["iter_num"] * train.micro_batch_size * model.max_seq_length),
             )
             metrics = {
-                "loss": loss,
-                "iter": state["iter_num"],
-                "step": state["step_count"],
-                "epoch": train_iterator.epoch,
-                "iter_time": t1 - iter_t0,
-                "remaining_time": (
+                "train/loss": loss,
+                "train/learning_rate": lr,
+                "progress/tokens": state["iter_num"] * train.micro_batch_size * model.max_seq_length,
+                "progress/total_tokens": (state["iter_num"] * train.micro_batch_size * model.max_seq_length * fabric.world_size),
+                "progress/iter": state["iter_num"],
+                "progress/step": state["step_count"],
+                "progress/epoch": train_iterator.epoch,
+                "progress/iter_time": t1 - iter_t0,
+                "progress/remaining_time (s)": (
                     (t1 - total_t0) / (state["iter_num"] - initial_iter) * (max_iters - state["iter_num"])
                 ),
-                "tokens": state["iter_num"] * train.micro_batch_size * model.max_seq_length,
-                "total_tokens": (state["iter_num"] * train.micro_batch_size * model.max_seq_length * fabric.world_size),
-                "learning_rate": lr,
             }
             if isinstance(val_loss, float):
                 val_loss = f"{val_loss:.3f}"
             fabric.print(
-                f"Epoch {metrics['epoch']+1} | iter {metrics['iter']} step {metrics['step']} |"
-                f" loss train: {metrics['loss']:.3f},"
-                f" val: {val_loss} |"
-                f" iter time: {metrics['iter_time'] * 1000:.2f} ms"
+                f"Epoch {metrics['progress/epoch']+1} | iter {metrics['progress/iter']}, step {metrics['progress/step']} |"
+                f" train loss: {metrics['train/loss']:.3f},"
+                f" val loss: {val_loss} |"
+                f" iter time: {metrics['progress/iter_time'] * 1000:.2f} ms"
                 f"{' (step)' if not is_accumulating else ''}"
-                f" remaining time: {timedelta(seconds=int(metrics['remaining_time']))!s}"
+                f" remaining time: {timedelta(seconds=int(metrics['progress/remaining_time (s)']))!s}"
             )
 
             throughput_metrics = throughput.compute()
-            metrics.update(throughput_metrics)
+            for key, val in throughput_metrics.items():
+                assert not key.startswith("/")
+                metrics[f"throughput/{key}"] = val
+                
             fabric.log_dict(metrics, step=state["iter_num"] - 1)
 
         if val_dataloader is not None and not is_accumulating and state["step_count"] % eval.interval == 0:
@@ -388,7 +391,7 @@ def fit(
             td = time.perf_counter() - t0
 
             fabric.print(f"iter {state['iter_num']}: val loss {val_loss:.4f}, val time: {td * 1000:.2f} ms")
-            metrics = {"val_loss": val_loss, "val_ppl": math.exp(val_loss)}
+            metrics = {"val/val_loss": val_loss, "val/val_ppl": math.exp(val_loss)}
             fabric.log_dict(metrics, step=state["iter_num"] - 1)
             fabric.barrier()
 
@@ -406,7 +409,7 @@ def fit(
     # Final validation
     if eval.final_validation:
         val_loss = validate(fabric, model, val_dataloader, max_iters=eval.max_iters)
-        metrics = {"val_loss": val_loss, "val_ppl": math.exp(val_loss)}
+        metrics = {"val/val_loss": val_loss, "val/val_ppl": math.exp(val_loss)}
         fabric.log_dict(metrics, step=state["iter_num"])
         fabric.print(f"Final evaluation | val loss: {val_loss.item():.3f} | val ppl: {math.exp(val_loss):.3f}")
 

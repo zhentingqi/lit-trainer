@@ -2010,7 +2010,7 @@ my_models = [
         norm_class_name="RMSNorm",  
         norm_eps=1e-5,
         mlp_class_name="LLaMAMLP",
-        intermediate_size=3072,
+        intermediate_size=2992,
         n_query_groups=4,
     ),
 ]

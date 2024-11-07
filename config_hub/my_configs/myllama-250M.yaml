@@ -31,7 +31,7 @@ data: Overtraining
 train:
 
   # Number of tokens to see between saving checkpoints (type: int, default: 10000000000)
-  save_per_tokens: 2500000000
+  save_per_tokens: 5000000000
 
   # Number of iterations between logging calls (type: int, default: 1)
   log_interval: 2
@@ -46,7 +46,7 @@ train:
   lr_warmup_fraction: 0.1
 
   # Total number of tokens to train on (type: Optional[int], default: 3000000000000)
-  max_tokens: 20000000000
+  max_tokens: 40000000000
 
   # Limits the length of samples. Off by default (type: Optional[int], default: null)
   max_seq_length: 2048
@@ -55,7 +55,7 @@ train:
   max_norm: 1.0
 
   #   (type: float, default: 4e-05)
-  min_lr: 1.0e-4
+  min_lr: 7.5e-5
 
 # Evaluation-related arguments. See ``litgpt.args.EvalArgs`` for details
 eval:
@@ -83,7 +83,7 @@ optimizer:
   init_args:
     
     #   (type: float, default: 0.001)
-    lr: 1.0e-3
+    lr: 7.5e-4
     
     #   (type: float, default: 0.01)
     weight_decay: 0.1
@@ -104,7 +104,7 @@ num_nodes: 1
 tokenizer_dir: /n/holyscratch01/glassman_lab/Users/zhentingqi/my_projects/overtraining/official_ckpts/meta-llama/Llama-2-7b-hf
 
 # Logger-related arguments
-logger_offline: true
+logger_offline: false
 logger_name: wandb
 logger_run_id: myllama-250M
 
