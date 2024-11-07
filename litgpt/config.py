@@ -158,10 +158,13 @@ class Config:
         return getattr(torch.nn, self.norm_class_name)
 
 
+configs = []
+
+
 ########################
 # Stability AI StableLM
 ########################
-configs = [
+stablelm = [
     # https://huggingface.co/stabilityai/stablelm-base-alpha-3b/blob/main/config.json
     dict(name="stablelm-base-alpha-3b", hf_config=dict(org="stabilityai", name="stablelm-base-alpha-3b")),
     # https://huggingface.co/stabilityai/stablelm-base-alpha-7b/blob/main/config.json
@@ -209,6 +212,7 @@ configs = [
         intermediate_size=6912,
     ),
 ]
+configs.extend(stablelm)
 
 
 ##########################
@@ -503,7 +507,6 @@ falcon180b = dict(
     n_query_groups=8,
     bias=False,
 )
-
 for kind in ("", "-chat"):
     copy = deepcopy(falcon180b)
     copy["name"] = falcon180b["name"].format(kind)
@@ -1003,6 +1006,7 @@ for c in llama_3:
         copy["hf_config"]["name"] = c["hf_config"]["name"].format(kind)
         configs.append(copy)
 
+
 #########################
 # NVIDIA Llama Nemotron
 #########################
@@ -1027,6 +1031,8 @@ configs.append(
         rope_adjustments=dict(factor=8.0, low_freq_factor=1.0, high_freq_factor=4.0, original_max_seq_len=8192)
     ),
 )
+
+
 ###############
 # Google Gemma
 ###############
@@ -1163,6 +1169,7 @@ for c in gemma:
     copy["hf_config"]["name"] = f"{c['hf_config']['name']}-it"
     configs.append(copy)
 
+
 ##################
 # Google CodeGemma
 ##################
@@ -1188,6 +1195,7 @@ codegemma = [
     ),
 ]
 configs.extend(codegemma)
+
 
 ################
 # H2Oai Danube2
@@ -1724,7 +1732,6 @@ configs.extend(phi)
 #############
 # Mistral AI
 #############
-
 configs.append(
     # https://huggingface.co/mistralai/mathstral-7B-v0.1/blob/main/config.json
     dict(
@@ -1745,7 +1752,6 @@ configs.append(
         sliding_window_layer_placing="all",
     )
 )
-
 mistral = [
     # https://huggingface.co/mistralai/Mistral-7B-v0.1/blob/main/config.json
     dict(
@@ -1966,7 +1972,49 @@ llama_2_function_calling = [
         rope_base=10000,
     )
 ]
-
 configs.extend(llama_2_function_calling)
+
+
+#*****************************
+#* Add customized models here
+#*****************************
+my_models = [
+    dict(
+        name="myllama-125M",
+        block_size=2048,
+        vocab_size=32000,
+        padding_multiple=64,
+        n_layer=12,
+        n_head=32,
+        n_embd=768,
+        rotary_percentage=1.0,
+        parallel_residual=False,
+        bias=False,
+        norm_class_name="RMSNorm",  
+        norm_eps=1e-5,
+        mlp_class_name="LLaMAMLP",
+        intermediate_size=2176,
+        n_query_groups=4,
+    ),
+    dict(
+        name="myllama-250M",
+        block_size=2048,
+        vocab_size=32000,
+        padding_multiple=64,
+        n_layer=16,
+        n_head=32,
+        n_embd=1024,
+        rotary_percentage=1.0,
+        parallel_residual=False,
+        bias=False,
+        norm_class_name="RMSNorm",  
+        norm_eps=1e-5,
+        mlp_class_name="LLaMAMLP",
+        intermediate_size=3072,
+        n_query_groups=4,
+    ),
+]
+configs.extend(my_models)
+
 
 name_to_config = {config["name"]: config for config in configs}

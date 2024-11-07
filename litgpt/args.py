@@ -9,8 +9,10 @@ import warnings
 class TrainArgs:
     """Training-related arguments"""
 
-    save_interval: Optional[int] = 1000
+    save_interval: Optional[int] = None
     """Number of optimizer steps between saving checkpoints"""
+    save_per_tokens: Optional[int] = None
+    """Number of tokens between saving checkpoints"""
     log_interval: int = 1
     """Number of iterations between logging calls"""
     global_batch_size: int = 64
@@ -38,6 +40,15 @@ class TrainArgs:
     min_lr: float = 6e-5
 
     def __post_init__(self) -> None:
+        if self.save_interval and self.save_per_tokens:
+            raise ValueError(
+                "Can't provide both `--train.save_interval` and `--train.save_per_tokens`. Choose one."
+            )
+        if self.save_interval is None and self.save_per_tokens is None:
+            raise ValueError(
+                "Must provide either `--train.save_interval` or `--train.save_per_tokens`."
+            )
+        
         if self.lr_warmup_fraction and self.lr_warmup_steps:
             raise ValueError(
                 "Can't provide both `--train.lr_warmup_fraction` and `--train.lr_warmup_steps`. Choose one."

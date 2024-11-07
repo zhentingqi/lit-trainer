@@ -16,6 +16,7 @@ from litgpt.data.tinyllama import TinyLlama
 from litgpt.data.tinystories import TinyStories
 from litgpt.data.openwebtext import OpenWebText
 from litgpt.data.microllama import MicroLlama
+from litgpt.data.overtraining import Overtraining
 
 
 __all__ = [

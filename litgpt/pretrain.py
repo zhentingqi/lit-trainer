@@ -51,14 +51,15 @@ def setup(
     resume: Union[bool, Literal["auto"], Path] = False,
     data: Optional[DataModule] = None,
     train: TrainArgs = TrainArgs(
-        save_interval=1000,
+        save_per_tokens=1e10,   # save every 10 billion tokens
         log_interval=1,
         global_batch_size=512,
-        micro_batch_size=4,
-        max_tokens=int(3e12),  # 3 trillion
+        micro_batch_size=4, 
+        max_tokens=int(3e12),  # 3 trillion tokens
         max_norm=1.0,
         min_lr=4e-5,
-        lr_warmup_steps=2000,
+        lr_warmup_steps=None,
+        lr_warmup_fraction=0.1,
         tie_embeddings=False,
     ),
     eval: EvalArgs = EvalArgs(interval=1000, max_iters=100),
@@ -66,7 +67,9 @@ def setup(
     devices: Union[int, str] = "auto",
     num_nodes: int = 1,
     tokenizer_dir: Optional[Path] = None,
-    logger_name: Literal["wandb", "tensorboard", "csv"] = "tensorboard",
+    logger_offline: bool = False,
+    logger_name: Literal["wandb", "tensorboard", "csv"] = "csv",
+    logger_run_id: Optional[str] = None,
     seed: int = 42,
 ):
     """Pretrain a model.
@@ -92,7 +95,9 @@ def setup(
         num_nodes: How many nodes the code is being run on.
         tokenizer_dir: Optional path to the tokenizer dir that was used for preprocessing the dataset. Only some data
             module require this.
+        logger_offline: Whether to run the logger in offline mode.
         logger_name: The name of the logger to send metrics to.
+        logger_run_id: The name of the run.
         seed: The random seed to use for reproducibility.
     """
     if model_name == "list":
@@ -127,7 +132,13 @@ def setup(
     tokenizer = Tokenizer(tokenizer_dir) if tokenizer_dir is not None else None
 
     logger = choose_logger(
-        logger_name, out_dir, name=f"pretrain-{config.name}", resume=bool(resume), log_interval=train.log_interval
+        logger_name=logger_name,
+        out_dir=out_dir,
+        run_name=logger_run_id,
+        project_name=f"overtraining", 
+        offline=logger_offline,
+        log_interval=train.log_interval,
+        resume=bool(resume), 
     )
 
     if devices * num_nodes > 1:
@@ -317,7 +328,7 @@ def fit(
 
         input_ids = train_data[:, 0 : model.max_seq_length].contiguous().long()
         targets = train_data[:, 1 : (model.max_seq_length + 1)].contiguous().long()
-
+        
         is_accumulating = state["iter_num"] % train.gradient_accumulation_iters(devices) != 0
         with fabric.no_backward_sync(model, enabled=is_accumulating):
             logits = model(input_ids)
@@ -381,8 +392,16 @@ def fit(
             fabric.log_dict(metrics, step=state["iter_num"] - 1)
             fabric.barrier()
 
-        if train.save_interval is not None and not is_accumulating and state["step_count"] % train.save_interval == 0:
-            save_checkpoint(fabric, state, tokenizer_dir, out_dir / f"step-{state['step_count']:08d}" / "lit_model.pth")
+        if train.save_interval is not None:
+            if should_save_checkpoint(fabric, model, train, is_accumulating, state, "steps"):
+                save_checkpoint(fabric, state, tokenizer_dir, out_dir / f"step-{state['step_count']:08d}" / "lit_model.pth")
+        elif train.save_per_tokens is not None:
+            if should_save_checkpoint(fabric, model, train, is_accumulating, state, "tokens"):
+                large_number = state["iter_num"] * train.micro_batch_size * model.max_seq_length * fabric.world_size
+                large_number = beautify_large_number(large_number)
+                save_checkpoint(fabric, state, tokenizer_dir, out_dir / f"tokens-{large_number}" / "lit_model.pth")
+        else:
+            raise ValueError("No save strategy provided.")
 
     # Final validation
     if eval.final_validation:
@@ -464,6 +483,23 @@ def initialize_weights(fabric: L.Fabric, model: GPT, n_layer: int, n_embd: int) 
         reset_parameters(model)
 
 
+def should_save_checkpoint(fabric: L.Fabric, model: GPT, train: TrainArgs, is_accumulating: bool, state: dict, strategy: str):
+    if strategy == "steps":
+        return (
+            train.save_interval is not None 
+            and not is_accumulating
+            and state["step_count"] % train.save_interval == 0
+        )
+    elif strategy == "tokens":
+        return (
+            train.save_per_tokens is not None
+            and not is_accumulating
+            and (state["iter_num"] * train.micro_batch_size * model.max_seq_length * fabric.world_size) % train.save_per_tokens == 0
+        )
+    else:
+        raise ValueError(f"Invalid strategy: {strategy}")
+
+
 def save_checkpoint(fabric, state, tokenizer_dir, checkpoint_file):
     model = state["model"]
     checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
@@ -492,3 +528,15 @@ def validate_args(train: TrainArgs, eval: EvalArgs, initial_checkpoint_dir, resu
         issues.append("Can't provide both `--resume` and `--initial_checkpoint_dir`. Choose one.")
     if issues:
         raise ValueError("\n".join(issues))
+
+
+def beautify_large_number(large_number: int) -> str:
+    """Beautify large number by setting M, B, T suffixes."""
+    if large_number >= 1_000_000_000_000:
+        return f"{large_number / 1_000_000_000_000:.2f}T"
+    if large_number >= 1_000_000_000:
+        return f"{large_number / 1_000_000_000:.2f}B"
+    if large_number >= 1_000_000:
+        return f"{large_number / 1_000_000:.2f}M"
+    
+    return f"{large_number}"
