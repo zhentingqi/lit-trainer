@@ -1,0 +1,1 @@
+python litgpt/scripts/prepare_openwebmath.py
