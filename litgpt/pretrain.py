@@ -52,17 +52,9 @@ def setup(
     data: Optional[DataModule] = None,
     train: TrainArgs = TrainArgs(
         save_per_tokens=1e10,   # save every 10 billion tokens
-        log_interval=1,
-        global_batch_size=512,
-        micro_batch_size=4, 
-        max_tokens=int(3e12),  # 3 trillion tokens
-        max_norm=1.0,
-        min_lr=4e-5,
-        lr_warmup_steps=None,
-        lr_warmup_fraction=0.1,
-        tie_embeddings=False,
+        lr_warmup_ratio=0.1,
     ),
-    eval: EvalArgs = EvalArgs(interval=1000, max_iters=100),
+    eval: EvalArgs = EvalArgs(),
     optimizer: Union[str, Dict] = "AdamW",
     devices: Union[int, str] = "auto",
     num_nodes: int = 1,
@@ -313,7 +305,10 @@ def fit(
     fabric.barrier()
     total_t0 = time.perf_counter()
 
-    warmup_iters = train.warmup_iters(devices, max_iters, train_dataloader) # todo: buggy; when adjusting max_tokens, the warmup_iters should be adjusted too, but it's not
+    warmup_iters = train.warmup_iters(devices, max_iters, train_dataloader)
+    print("Max iters:", max_iters)
+    print("Warmup iters:", warmup_iters)
+    breakpoint()
 
     for train_data in train_iterator:
         if state["iter_num"] >= max_iters:

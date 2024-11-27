@@ -19,10 +19,12 @@ class TrainArgs:
     """Number of samples between optimizer steps across data-parallel ranks"""
     micro_batch_size: int = 4
     """Number of samples per data-parallel rank"""
-    lr_warmup_steps: Optional[int] = 100
+    lr_warmup_steps: Optional[int] = None
     """Number of iterations with learning rate warmup active"""
     lr_warmup_fraction: Optional[float] = None
-    """The fraction of an epoch to use for learning rate warmup"""
+    """The fraction of an epoch to use for learning rate warmup (fraction of the training data)"""
+    lr_warmup_ratio: Optional[float] = None
+    """The ratio of iters to use for learning rate warmup (ratio of the training iterations)"""
     epochs: Optional[int] = None
     """Number of epochs to train on"""
     # TODO: `pretrain` is the only script using `max_tokens` explicitly. replace it with epoch_size*epochs?
@@ -49,12 +51,26 @@ class TrainArgs:
                 "Must provide either `--train.save_interval` or `--train.save_per_tokens`."
             )
         
+        if self.lr_warmup_steps is None and self.lr_warmup_fraction is None and self.lr_warmup_ratio is None:
+            raise ValueError(
+                "Must provide either `--train.lr_warmup_steps`, `--train.lr_warmup_fraction` or `--train.lr_warmup_ratio`."
+            )
         if self.lr_warmup_fraction and self.lr_warmup_steps:
             raise ValueError(
                 "Can't provide both `--train.lr_warmup_fraction` and `--train.lr_warmup_steps`. Choose one."
             )
+        if self.lr_warmup_fraction and self.lr_warmup_ratio:
+            raise ValueError(
+                "Can't provide both `--train.lr_warmup_fraction` and `--train.lr_warmup_ratio`. Choose one."
+            )
+        if self.lr_warmup_steps and self.lr_warmup_ratio:
+            raise ValueError(
+                "Can't provide both `--train.lr_warmup_steps` and `--train.lr_warmup_ratio`. Choose one."
+            )
         if self.lr_warmup_fraction and not (0 <= self.lr_warmup_fraction <= 1):
             raise ValueError("`--train.lr_warmup_fraction` must be between 0 and 1.")
+        if self.lr_warmup_ratio and not (0 <= self.lr_warmup_ratio <= 1):
+            raise ValueError("`--train.lr_warmup_ratio` must be between 0 and 1.")
 
         if self.lr_warmup_steps and self.max_steps and (self.lr_warmup_steps >= self.max_steps):
             warnings.warn(
@@ -75,6 +91,8 @@ class TrainArgs:
 
     def warmup_iters(self, devices: int, max_iters: int, train_dataloader) -> int:
         """Number of iterations to warm up the learning rate."""
+        if self.lr_warmup_ratio:
+            return math.ceil(self.lr_warmup_ratio * max_iters)
         if self.lr_warmup_fraction:
             return min(max_iters, math.ceil(self.lr_warmup_fraction * len(train_dataloader)))
         if self.lr_warmup_steps:
