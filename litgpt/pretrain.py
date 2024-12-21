@@ -39,6 +39,7 @@ from litgpt.utils import (
     reset_parameters,
     save_config,
     save_hyperparameters,
+    beautify_large_number,
 )
 
 
@@ -51,7 +52,8 @@ def setup(
     resume: Union[bool, Literal["auto"], Path] = False,
     data: Optional[DataModule] = None,
     train: TrainArgs = TrainArgs(
-        save_per_tokens=1e10,   # save every 10 billion tokens
+        save_interval=1e4,  
+        save_per_tokens=None,
         lr_warmup_ratio=0.1,
     ),
     eval: EvalArgs = EvalArgs(),
@@ -230,10 +232,20 @@ def main(
         "num_saved_ckpts": 0,
     }
 
-    resume = find_resume_path(resume, out_dir)
+    if train.save_interval is not None:
+        save_strategy = "steps"
+    elif train.save_per_tokens is not None:
+        save_strategy = "tokens"
+    else:
+        raise ValueError("The save strategy is not set properly.")
+    
+    resume = find_resume_path(resume, out_dir, save_strategy)
     if resume:
-        fabric.print(f"Resuming training from {resume}")
+        fabric.print(f"[INFO] Resuming training from {resume}")
         fabric.load(resume, state)
+        
+    fabric.print("[INFO] Initial state:")
+    fabric.print(state)
 
     train_time = time.perf_counter()
     fit(fabric, devices, state, train_dataloader, val_dataloader, out_dir, tokenizer_dir, train, eval)
@@ -308,7 +320,6 @@ def fit(
     warmup_iters = train.warmup_iters(devices, max_iters, train_dataloader)
     print("Max iters:", max_iters)
     print("Warmup iters:", warmup_iters)
-    breakpoint()
 
     for train_data in train_iterator:
         if state["iter_num"] >= max_iters:
@@ -532,13 +543,3 @@ def validate_args(train: TrainArgs, eval: EvalArgs, initial_checkpoint_dir, resu
         raise ValueError("\n".join(issues))
 
 
-def beautify_large_number(large_number: int) -> str:
-    """Beautify large number by setting M, B, T suffixes."""
-    if large_number >= 1_000_000_000_000:
-        return f"{large_number / 1_000_000_000_000:.2f}T"
-    if large_number >= 1_000_000_000:
-        return f"{large_number / 1_000_000_000:.2f}B"
-    if large_number >= 1_000_000:
-        return f"{large_number / 1_000_000:.2f}M"
-    
-    return f"{large_number}"

@@ -1,7 +1,7 @@
 
 # The name of the model to pretrain. Choose from names in ``litgpt.config``. Mutually exclusive with
 # ``model_config``. (type: Optional[str], default: null)
-model_name: myllama-125M
+model_name: myllama-1B
 
 # A ``litgpt.Config`` object to define the model architecture. Mutually exclusive with
 # ``model_config``. (type: Optional[Config], default: null)
@@ -9,7 +9,7 @@ model_config:
 
 # Directory in which to save checkpoints and logs. If running in a Lightning Studio Job, look for it in
 # /teamspace/jobs/<job-name>/share. (type: <class 'Path'>, default: out/pretrain)
-out_dir: /n/netscratch/glassman_lab/Lab/zhentingqi/my_projects/overtraining/lit_out/pretrain/debug
+out_dir: /n/netscratch/glassman_lab/Lab/zhentingqi/my_projects/overtraining/lit_out/pretrain/myllama-1B-80BT-4gpus
 
 # The precision to use for pretraining. Possible choices: "bf16-true", "bf16-mixed", "32-true". (type: Optional[str], default: null)
 precision: bf16-mixed
@@ -22,7 +22,7 @@ initial_checkpoint_dir:
 # from the latest checkpoint in ``out_dir``. An error will be raised if no checkpoint is found. Passing
 # ``'auto'`` will resume from the latest checkpoint but not error if no checkpoint exists.
 # (type: Union[bool, Literal["auto"], Path], default: False)
-resume: true
+resume: false
 
 # Data-related arguments. If not provided, the default is ``litgpt.data.TinyLlama``.
 data: Overtraining
@@ -30,9 +30,7 @@ data: Overtraining
 # Training-related arguments. See ``litgpt.args.TrainArgs`` for details
 train:
 
-  # Number of tokens to see between saving checkpoints (type: int, default: 10000000000)
-  save_per_tokens: 1_000_000
-  # save_interval: 10
+  save_interval: 10_000
 
   # Number of iterations between logging calls (type: int, default: 1)
   log_interval: 2
@@ -41,13 +39,13 @@ train:
   global_batch_size: 512
 
   # Number of samples per data-parallel rank (type: int, default: 4)
-  micro_batch_size: 16
+  micro_batch_size: 8
 
   # Ratio of iterations for warmup (type: float, default: 0.1)
   lr_warmup_ratio: 0.1
 
   # Total number of tokens to train on (type: Optional[int], default: 3000000000000)
-  max_tokens: 1_000_000_000
+  max_tokens: 80_000_000_000
 
   # Limits the length of samples. Off by default (type: Optional[int], default: null)
   max_seq_length: 2048
@@ -56,16 +54,13 @@ train:
   max_norm: 1.0
 
   #   (type: float, default: 4e-05)
-  min_lr: 7.5e-5
-
-  #   (type: bool, default: false)
-  tie_embeddings: false
+  min_lr: 2.0e-5
 
 # Evaluation-related arguments. See ``litgpt.args.EvalArgs`` for details
 eval:
 
   # Number of optimizer steps between evaluation calls (type: int, default: 1000)
-  interval: 10
+  interval: 1000
 
   # Number of tokens to generate (type: Optional[int], default: null)
   max_new_tokens:
@@ -87,7 +82,7 @@ optimizer:
   init_args:
     
     #   (type: float, default: 0.001)
-    lr: 7.5e-4
+    lr: 2.0e-4
     
     #   (type: float, default: 0.01)
     weight_decay: 0.1
@@ -105,12 +100,12 @@ num_nodes: 1
 
 # Optional path to the tokenizer dir that was used for preprocessing the dataset. Only some data
 # module require this. (type: Optional[Path], default: null)
-tokenizer_dir: /n/netscratch/glassman_lab/Lab/zhentingqi/big_models/hf_ckpts/tinyllama
+tokenizer_dir: /n/netscratch/glassman_lab/Lab/zhentingqi/big_models/hf_ckpts/Llama-2-7b-hf
 
 # Logger-related arguments
-logger_offline: true
+logger_offline: false
 logger_name: wandb
-logger_run_id: debug
+logger_run_id: myllama-1B-80BT-4gpus
 
 # The random seed to use for reproducibility. (type: int, default: 42)
 seed: 42

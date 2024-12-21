@@ -1,17 +1,17 @@
 import os
 
 
-src_dir = "/n/holyscratch01/glassman_lab/Users/zhentingqi/big_data/HF_datasets/openwebmath/whole_data"
-tgt_dir = "/n/holyscratch01/glassman_lab/Users/zhentingqi/big_data/HF_datasets/openwebmath/eval_500M"
+src_dir = "/n/netscratch/glassman_lab/Lab/zhentingqi/big_data/hf_datasets/openwebmath/all_data"
+tgt_dir = "/n/netscratch/glassman_lab/Lab/zhentingqi/big_data/hf_datasets/openwebmath/eval_500M"
 os.makedirs(tgt_dir, exist_ok=True)
 
 # Count the number of files in the source directory
 files = os.listdir(src_dir)
 num_files = len(files)
-
+print(f"Number of files in the source directory: {num_files}")
 # Select 1/30 of the files to copy to the target directory
 num_files_to_copy = num_files // 30
-
+print(f"Number of files to copy: {num_files_to_copy}")
 from random import sample
 selected_files = sample(files, num_files_to_copy)
 

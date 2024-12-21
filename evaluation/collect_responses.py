@@ -4,29 +4,40 @@ import json
 import torch
 from tqdm import tqdm, trange
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+from vllm import LLM, SamplingParams
 
 
-def generate(model, tokenizer, prompt, **gen_kwargs):
-    tokenized_input = tokenizer(prompt, return_tensors="pt")
+def generate(api, model, tokenizer, prompt: str, **gen_kwargs):
+    if api == "hf":
+        tokenized_input = tokenizer(prompt, return_tensors="pt")
 
-    # Provide attention mask and handle padding
-    input_ids = tokenized_input["input_ids"].to(model.device)
-    attention_mask = tokenized_input["attention_mask"].to(model.device)
-    
-    assert input_ids.ndim == 2
-    assert input_ids.shape[0] == 1
-    outputs = model.generate(
-        input_ids, 
-        tokenizer=tokenizer,
-        pad_token_id=tokenizer.pad_token_id,
-        attention_mask=attention_mask,
-        **gen_kwargs
-    )
-    assert len(outputs) == 1
-    output = outputs[0]
-    output = output[input_ids.shape[-1]:]   # Only decode the generated tokens
-    output_text = tokenizer.decode(output, skip_special_tokens=True)
-    output_text = output_text.strip().strip("\n")
+        # Provide attention mask and handle padding
+        input_ids = tokenized_input["input_ids"].to(model.device)
+        attention_mask = tokenized_input["attention_mask"].to(model.device)
+        
+        assert input_ids.ndim == 2
+        assert input_ids.shape[0] == 1
+        outputs = model.generate(
+            input_ids, 
+            tokenizer=tokenizer,
+            pad_token_id=tokenizer.pad_token_id,
+            attention_mask=attention_mask,
+            **gen_kwargs
+        )
+        assert len(outputs) == 1
+        output = outputs[0]
+        output = output[input_ids.shape[-1]:]   # Only decode the generated tokens
+        output_text = tokenizer.decode(output, skip_special_tokens=True)
+        output_text = output_text.strip().strip("\n")
+    elif api == "vllm":
+        sampling_params = SamplingParams(
+            max_new_tokens=gen_kwargs["max_new_tokens"],
+            do_sample=gen_kwargs["do_sample"],
+            repetition_penalty=gen_kwargs["repetition_penalty"],
+            stop_tokens=gen_kwargs["stop_strings"],
+        )
+        output_text = model.generate(prompt, sampling_params)
+        #todo
     
     return output_text
         
@@ -46,22 +57,31 @@ def main(args):
         data = json.load(f)
 
     #! Load model and tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(args.model_ckpt_dir, use_fast=True, local_files_only=True)
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-    config = AutoConfig.from_pretrained(args.model_ckpt_dir)
-    model = AutoModelForCausalLM.from_config(config).to(args.device)
-    state_dict = torch.load(f"{args.model_ckpt_dir}/model.pth")
-    model.load_state_dict(state_dict)
+    if args.api == "hf":
+        tokenizer = AutoTokenizer.from_pretrained(args.model_ckpt_dir, use_fast=True, local_files_only=True)
+        if tokenizer.pad_token_id is None:
+            tokenizer.pad_token_id = tokenizer.eos_token_id
+        config = AutoConfig.from_pretrained(args.model_ckpt_dir)
+        model = AutoModelForCausalLM.from_config(config).to(args.device)
+        state_dict = torch.load(f"{args.model_ckpt_dir}/model.pth")
+        model.load_state_dict(state_dict)
+        
+        gen_kwargs = {
+            "max_new_tokens": args.max_new_tokens,
+            "do_sample": args.do_sample,     
+            "repetition_penalty": args.repetition_penalty,  
+            "stop_strings": prompt_config["stop_tokens"],
+        }
+    elif args.api == "vllm":
+        model = LLM(model=args.model_ckpt_dir, enable_prefix_caching=True)
+        gen_kwargs = {
+            "max_tokens": args.max_new_tokens,
+            "do_sample": args.do_sample,
+            "repetition_penalty": args.repetition_penalty,
+            "stop_tokens": prompt_config["stop_tokens"],
+        }
     
     #! Evaluate
-    gen_kwargs = {
-        "max_new_tokens": args.max_new_tokens,
-        "do_sample": args.do_sample,     
-        "repetition_penalty": args.repetition_penalty,  
-        "stop_strings": prompt_config["stop_tokens"],
-    }
-    
     print(f"==> Generating {len(data)} examples")
     for entry in tqdm(data):
         id, problem, solution = entry["id"], entry["problem"], entry["solution"]
@@ -70,7 +90,7 @@ def main(args):
             continue
         
         prompt = prompt_template.replace("<<<instruction>>>", problem)
-        output_text = generate(model, tokenizer, prompt, **gen_kwargs)
+        output_text = generate(args.api, model, tokenizer, prompt, **gen_kwargs)
         
         js = {
             "id": id,
@@ -103,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_ckpt_dir", type=str, default=None)
     parser.add_argument("--out_dir", type=str, default=None)
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--api", type=str, choices=["vllm", "hf"], default="vllm")
     
     # llm
     parser.add_argument("--max_new_tokens", type=int, default=512)

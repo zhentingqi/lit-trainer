@@ -1,4 +1,12 @@
-checkpoint_dir=/n/holyscratch01/glassman_lab/Users/zhentingqi/my_projects/overtraining/lit_out/pretrain/myllama-500M-multigpu/tokens-30.00B
-converted_dir=/n/holyscratch01/glassman_lab/Users/zhentingqi/my_projects/overtraining/lit_out/pretrain/myllama-500M-multigpu/tokens-30.00B-hf
+root=/n/netscratch/glassman_lab/Lab/zhentingqi/my_projects/overtraining/lit_out/pretrain/myllama-1B-100BT-4gpus
 
-litgpt convert_from_litgpt $checkpoint_dir $converted_dir
+lit_ckpt_dir=$root/final
+lit_convert_out_dir=$root/final-converted
+hf_ckpt_dir=$root/final-hf
+
+litgpt convert_from_litgpt $lit_ckpt_dir $lit_convert_out_dir
+
+python scripts/make_hf_model.py \
+    --lit_convert_out_dir $lit_convert_out_dir \
+    --save_dir $hf_ckpt_dir \
+    --disable_test_vllm

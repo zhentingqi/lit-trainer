@@ -1,6 +1,7 @@
 # Copyright Lightning AI. Licensed under the Apache License 2.0, see LICENSE file.
 
 import gc
+import os
 from collections import defaultdict
 from functools import partial
 from pathlib import Path
@@ -376,6 +377,10 @@ def convert_lit_checkpoint(checkpoint_dir: Path, output_dir: Path, model_only: b
     
     checkpoint_dir = extend_checkpoint_dir(checkpoint_dir)
     lit_model_pth = checkpoint_dir / "lit_model.pth"
+    
+    if os.path.exists(output_dir):
+        print(f"Output directory {output_dir} already exists. Exiting.")
+        return
     
     output_dir.mkdir(parents=True, exist_ok=True)
     model_output_path = output_dir / "model.pth"

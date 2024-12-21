@@ -1,5 +1,6 @@
 {
     "stop_tokens": [
-        "\n"
+        "\nQuestion:",
+        "\nAnswer:"
     ]
 }

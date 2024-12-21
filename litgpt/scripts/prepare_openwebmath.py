@@ -4,7 +4,6 @@ import os
 import time
 import traceback
 from pathlib import Path
-
 from lightning_utilities.core.imports import RequirementCache
 
 from litgpt.tokenizer import Tokenizer
@@ -52,9 +51,9 @@ class OpenwebmathDataRecipe(DataChunkRecipe):
 
 
 def prepare(
-    input_dir: Path = Path("/n/holyscratch01/glassman_lab/Users/zhentingqi/big_data/HF_datasets/openwebmath/eval_500M"),
-    output_dir: Path = Path("/n/holyscratch01/glassman_lab/Users/zhentingqi/my_projects/overtraining/data/tmp"),
-    tokenizer_path: Path = Path("/n/holyscratch01/glassman_lab/Users/zhentingqi/my_projects/overtraining/official_ckpts/meta-llama/Llama-2-7b-hf"),
+    input_dir: Path = Path("/n/netscratch/glassman_lab/Lab/zhentingqi/big_data/hf_datasets/openwebmath/eval_500M"),
+    output_dir: Path = Path("/n/netscratch/glassman_lab/Lab/zhentingqi/my_projects/overtraining/data/val"),
+    tokenizer_path: Path = Path("/n/netscratch/glassman_lab/Lab/zhentingqi/big_models/hf_ckpts/tinyllama"),
     chunk_size: int = (2049 * 8192),
     fast_dev_run: bool = False,
 ) -> None:

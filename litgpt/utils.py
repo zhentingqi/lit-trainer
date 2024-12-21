@@ -34,6 +34,32 @@ from typing_extensions import Self
 
 if TYPE_CHECKING:
     from litgpt import GPT, Config
+    
+    
+def beautify_large_number(large_number: int) -> str:
+    """Beautify large number by setting M, B, T, K suffixes."""
+    if large_number >= 1_000_000_000_000:
+        return f"{large_number / 1_000_000_000_000:.2f}T"
+    if large_number >= 1_000_000_000:
+        return f"{large_number / 1_000_000_000:.2f}B"
+    if large_number >= 1_000_000:
+        return f"{large_number / 1_000_000:.2f}M"
+    if large_number >= 1_000:
+        return f"{large_number / 1_000:.2f}K"
+    
+    return f"{large_number}"
+
+
+def parse_large_number(large_number: str) -> int:
+    """Parse large number with M, B, T suffixes."""
+    if large_number.endswith("T"):
+        return int(float(large_number[:-1]) * 1_000_000_000_000)
+    if large_number.endswith("B"):
+        return int(float(large_number[:-1]) * 1_000_000_000)
+    if large_number.endswith("M"):
+        return int(float(large_number[:-1]) * 1_000_000)
+    
+    return int(large_number)
 
 
 def init_out_dir(out_dir: Path) -> Path:
@@ -44,17 +70,24 @@ def init_out_dir(out_dir: Path) -> Path:
     return out_dir
 
 
-def find_resume_path(resume: Union[bool, Literal["auto"], Path], out_dir: Path) -> Optional[Path]:
+def find_resume_path(resume: Union[bool, Literal["auto"], Path], out_dir: Path, save_strategy: str) -> Optional[Path]:
+    assert save_strategy in ["steps", "tokens"]
     if not resume or isinstance(resume, Path):
         return resume
 
-    resume_path = max(out_dir.rglob("step-*/*.pth"), key=(lambda p: int(p.parent.name.split("-")[1])), default=None)
+    if save_strategy == "steps":
+        resume_path = max(out_dir.rglob("step-*/*.pth"), key=(lambda p: int(p.parent.name.split("-")[1])), default=None)
+    else:
+        resume_path = max(out_dir.rglob("tokens-*/*.pth"), key=(lambda p: parse_large_number(p.parent.name.split("-")[1])), default=None)
+        
     if resume == "auto":
         return resume_path
+    
     if resume is True and resume_path is None:
         raise FileNotFoundError(
             f"You passed `--resume=True`, but no checkpont file was found in `--out_dir={out_dir}`."
         )
+        
     return resume_path
 
 

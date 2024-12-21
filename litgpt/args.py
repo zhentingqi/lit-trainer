@@ -42,6 +42,9 @@ class TrainArgs:
     min_lr: float = 6e-5
 
     def __post_init__(self) -> None:
+        if self.save_per_tokens is not None:
+            raise NotImplementedError("`--train.save_per_tokens` is not yet implemented.")
+        
         if self.save_interval and self.save_per_tokens:
             raise ValueError(
                 "Can't provide both `--train.save_interval` and `--train.save_per_tokens`. Choose one."
