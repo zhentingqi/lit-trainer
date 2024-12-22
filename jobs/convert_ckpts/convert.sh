@@ -1,4 +1,4 @@
-root=/n/netscratch/glassman_lab/Lab/zhentingqi/my_projects/overtraining/lit_out/pretrain/myllama-1B-100BT-4gpus
+root=/n/netscratch/glassman_lab/Lab/zhentingqi/my_projects/overtraining/lit_out/pretrain/myllama-1B-160BT-4gpus
 
 lit_ckpt_dir=$root/final
 lit_convert_out_dir=$root/final-converted
