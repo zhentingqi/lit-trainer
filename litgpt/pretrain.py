@@ -218,7 +218,12 @@ def main(
     optimizer = fabric.setup_optimizers(optimizer)
 
     train_dataloader, val_dataloader = get_dataloaders(fabric, data, tokenizer, train, model.max_seq_length)
-    train_dataloader, val_dataloader = fabric.setup_dataloaders(train_dataloader, val_dataloader)
+    assert train_dataloader is not None
+    if val_dataloader is not None:
+        train_dataloader, val_dataloader = fabric.setup_dataloaders(train_dataloader, val_dataloader)
+    else:
+        fabric.print("WARNING: No validation dataloader provided. Please make sure this is intended.")
+        train_dataloader = fabric.setup_dataloaders(train_dataloader)
 
     if initial_checkpoint_dir:
         fabric.load_raw(initial_checkpoint_dir / "lit_model.pth", model)
@@ -285,12 +290,15 @@ def fit(
     model = state["model"]
     optimizer = state["optimizer"]
 
-    if eval.initial_validation:
-        val_loss = validate(fabric, model, val_dataloader, max_iters=eval.max_iters)
-        val_loss = f"{val_loss:.3f}"
+    if val_dataloader is not None:
+        if eval.initial_validation:
+            val_loss = validate(fabric, model, val_dataloader, max_iters=eval.max_iters)
+            val_loss = f"{val_loss:.3f}"
+        else:
+            fabric.print("Verifying settings ...")
+            validate(fabric, model, val_dataloader, max_iters=2, verbose=False)   # sanity check
+            val_loss = "n/a"
     else:
-        fabric.print("Verifying settings ...")
-        validate(fabric, model, val_dataloader, max_iters=2, verbose=False)   # sanity check
         val_loss = "n/a"
 
     throughput = ThroughputMonitor(fabric, window_size=5)
@@ -414,7 +422,7 @@ def fit(
             raise ValueError("No save strategy provided.")
 
     # Final validation
-    if eval.final_validation:
+    if eval.final_validation and val_dataloader is not None:
         val_loss = validate(fabric, model, val_dataloader, max_iters=eval.max_iters)
         metrics = {"val/val_loss": val_loss, "val/val_ppl": math.exp(val_loss)}
         fabric.log_dict(metrics, step=state["iter_num"])
@@ -423,6 +431,8 @@ def fit(
 
 @torch.no_grad()
 def validate(fabric: L.Fabric, model: nn.Module, val_dataloader: DataLoader, max_iters: int, verbose: bool = True) -> torch.Tensor:
+    assert val_dataloader is not None
+    
     fabric.barrier()
     if verbose:
         fabric.print("Validating ...")

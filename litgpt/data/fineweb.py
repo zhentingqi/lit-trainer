@@ -12,10 +12,10 @@ from litgpt.data import DataModule
 
 
 @dataclass
-class Overtraining(DataModule):
-    """The Overtraining data module for pretraining."""
+class FineWeb(DataModule):
+    """The FineWeb data module for pretraining."""
 
-    data_path: Union[str, Path] = Path("/n/holyscratch01/glassman_lab/Users/zhentingqi/my_projects/overtraining/data/")
+    data_path: Union[str, Path] = Path("/n/netscratch/glassman_lab/Lab/zhentingqi/my_projects/overtraining/data/pretrain")
     """The path to the data directory, containing two folders 'train' and 'val'
     which are the output of the preprocessing step. The path can also be a remote path (e.g., s3://)."""
     val_split_fraction: float = 0.0005
@@ -47,7 +47,7 @@ class Overtraining(DataModule):
         for path in self.required_paths:
             if not path.startswith("s3://") and not Path(path).is_dir():
                 raise FileNotFoundError(
-                    "The data path for Overtraining is expected to be the directory containing these subdirectories:"
+                    "The data path for FineWeb is expected to be the directory containing these subdirectories:"
                     f" `train`, `val`. The directory {path} does not exist."
                     " Set it via `--data.data_path=...`"
                 )

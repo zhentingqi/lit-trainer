@@ -39,21 +39,26 @@ def download_from_hub(
         model_name: The existing config name to use for this repo_id. This is useful to download alternative weights of
             existing architectures.
     """
-    options = [f"{config['hf_config']['org']}/{config['hf_config']['name']}" for config in configs]
+    try:
+        options = [f"{config['hf_config']['org']}/{config['hf_config']['name']}" for config in configs]
 
-    if repo_id == "list":
-        print("Please specify --repo_id <repo_id>. Available values:")
-        print("\n".join(sorted(options, key=lambda x: x.lower())))
-        return
+        if repo_id == "list":
+            print("Please specify --repo_id <repo_id>. Available values:")
+            print("\n".join(sorted(options, key=lambda x: x.lower())))
+            return
 
-    if model_name is None and repo_id not in options:
-        print(f"Unsupported `repo_id`: {repo_id}."
-        "\nIf you are trying to download alternative "
-        "weights for a supported model, please specify the corresponding model via the `--model_name` option, "
-        "for example, `litgpt download NousResearch/Hermes-2-Pro-Llama-3-8B --model_name Llama-3-8B`."
-        "\nAlternatively, please choose a valid `repo_id` from the list of supported models, which can be obtained via "
-        "`litgpt download list`.")
-        return
+        if model_name is None and repo_id not in options:
+            print(f"Unsupported `repo_id`: {repo_id}."
+            "\nIf you are trying to download alternative "
+            "weights for a supported model, please specify the corresponding model via the `--model_name` option, "
+            "for example, `litgpt download NousResearch/Hermes-2-Pro-Llama-3-8B --model_name Llama-3-8B`."
+            "\nAlternatively, please choose a valid `repo_id` from the list of supported models, which can be obtained via "
+            "`litgpt download list`.")
+            return
+    except KeyError:
+        #todo: Some configs might not have the `hf_config` key.
+        #todo: This is a temporary fix to avoid breaking the code.
+        pass
 
     from huggingface_hub import snapshot_download
 
@@ -61,16 +66,17 @@ def download_from_hub(
     from_safetensors = False
     if not tokenizer_only:
         bins, safetensors = find_weight_files(repo_id, access_token)
-        if bins:
-            # covers `.bin` files and `.bin.index.json`
-            download_files.append("*.bin*")
-        elif safetensors:
+        if safetensors:
             if not _SAFETENSORS_AVAILABLE:
                 raise ModuleNotFoundError(str(_SAFETENSORS_AVAILABLE))
             download_files.append("*.safetensors*")
             from_safetensors = True
+        elif bins:
+            # covers `.bin` files and `.bin.index.json`
+            download_files.append("*.bin*")
         else:
             raise ValueError(f"Couldn't find weight files for {repo_id}")
+    print(f"Downloading from {repo_id}. Downloading files: {download_files}")
 
     import huggingface_hub._snapshot_download as download
     import huggingface_hub.constants as constants

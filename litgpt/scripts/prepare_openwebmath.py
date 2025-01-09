@@ -51,8 +51,8 @@ class OpenwebmathDataRecipe(DataChunkRecipe):
 
 
 def prepare(
-    input_dir: Path = Path("/n/netscratch/glassman_lab/Lab/zhentingqi/big_data/hf_datasets/openwebmath/eval_500M"),
-    output_dir: Path = Path("/n/netscratch/glassman_lab/Lab/zhentingqi/my_projects/overtraining/data/val"),
+    input_dir: Path = Path("/n/netscratch/glassman_lab/Lab/zhentingqi/big_data/hf_datasets/openwebmath/all_data"),
+    output_dir: Path = Path("/n/netscratch/glassman_lab/Lab/zhentingqi/my_projects/overtraining/data/continued_pretrain/train"),
     tokenizer_path: Path = Path("/n/netscratch/glassman_lab/Lab/zhentingqi/big_models/hf_ckpts/tinyllama"),
     chunk_size: int = (2049 * 8192),
     fast_dev_run: bool = False,

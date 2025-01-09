@@ -26,3 +26,5 @@ with open(openmathinstruct_file, "r") as f, open(scalequest_file, "r") as g, ope
     print("Writing merged data to file...")
     for data in tqdm(all_data):
         h.write(json.dumps(data) + "\n")
+    
+print(f"Wrote {len(all_data)} merged data to {merged_file}")

@@ -22,7 +22,7 @@ source activate lit
 python -c 'print("Hi Zhenting. Your job is running!")'
 
 # --- run your code here ---
-bash jobs/prepare_data/prepare_fineweb.sh
+bash jobs/prepare_data/prepare_openwebmath.sh
 # --------------------------
 
 python -c 'print("Hi Zhenting. Everything is done!")'

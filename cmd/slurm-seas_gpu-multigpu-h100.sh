@@ -23,7 +23,7 @@ source activate lit
 python -c 'print("Hi Zhenting. Your job is running!")'
 
 # --- run your code here ---
-litgpt pretrain --config config_hub/my_configs/myllama-1B-160BT.yaml
+litgpt pretrain --config config_hub/my_configs--continued_pretrain/experiments/myllama-1B-20BT--5.yaml
 # --------------------------
 
 python -c 'print("Hi Zhenting. Everything is done!")'
